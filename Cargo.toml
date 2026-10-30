@@ -9,3 +9,4 @@ authors = [ "Joel Hills" ]
 license = "GPL-3.0-only"
 
 [dependencies]
+arrayvec = { version = "0.7.8", default-features = false }
