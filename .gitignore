@@ -22,3 +22,7 @@ rustc-ice-*.txt
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# I don't expect to need to lock certain versions of dependencies, Rust libraries are usually
+# pretty good about not fucking shit up, so it doesn't make a whole lot of sense to include it.
+Cargo.lock
