@@ -49,7 +49,7 @@ pub struct EnabledExtensions {
     zclsd: bool
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Config {
     pub xlen: u8,
     pub flen: u8,
