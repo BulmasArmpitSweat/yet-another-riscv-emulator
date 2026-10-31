@@ -4,7 +4,8 @@ use crate::FromConfig;
 #[derive(Debug, Clone, Copy)]
 pub enum IntegerRegister {
     Word(u32),
-    DWord(u64)
+    DWord(u64),
+    QWord(u128)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -23,20 +24,36 @@ pub enum VectorRegister {
 }
 
 impl IntegerRegister {
+    pub fn set_u128(&mut self, val: u128) {
+        match self {
+            IntegerRegister::Word(w) => {
+                let upper_half = val >> 96;
+                *w = upper_half as u32;
+            },
+            IntegerRegister::DWord(d) => {
+                let upper_half = val >> 64;
+                *d = upper_half as u64;
+            },
+            IntegerRegister::QWord(q) => *q = val
+        }
+    }
+
     pub fn set_u64(&mut self, val: u64) {
         match self {
             IntegerRegister::Word(w) => {
                 let upper_half = val >> 32;
                 *w = upper_half as u32;
             },
-            IntegerRegister::DWord(d) => *d = val
+            IntegerRegister::DWord(d) => *d = val,
+            IntegerRegister::QWord(q) => *q = val as u128
         }
     }
 
     pub fn set_u32(&mut self, val: u32) {
         match self {
             IntegerRegister::Word(w) => *w = val,
-            IntegerRegister::DWord(d) => *d = val as u64
+            IntegerRegister::DWord(d) => *d = val as u64,
+            IntegerRegister::QWord(q) => *q = val as u128
         }
     }
 }
@@ -46,6 +63,7 @@ impl FromConfig for IntegerRegister {
         match config.xlen {
             32 => IntegerRegister::Word(0),
             64 => IntegerRegister::DWord(0),
+            128 => IntegerRegister::QWord(0),
             _ => panic!("Unknown xlen value")
         }
     }
@@ -79,6 +97,7 @@ impl core::ops::Add for IntegerRegister {
         match (self, rhs) {
             (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a + b),
             (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a + b),
+            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a + b),
             _ => panic!("Registers cannot differ in size")
         }
     }
@@ -91,6 +110,7 @@ impl core::ops::Sub for IntegerRegister {
         match (self, rhs) {
             (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a - b),
             (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a - b),
+            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a - b),
             _ => panic!("Registers cannot differ in size")
         }
     }
@@ -103,6 +123,7 @@ impl core::ops::Mul for IntegerRegister {
         match (self, rhs) {
             (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a * b),
             (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a * b),
+            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a * b),
             _ => panic!("Registers cannot differ in size")
         }
     }
@@ -115,6 +136,7 @@ impl core::ops::Div for IntegerRegister {
         match (self, rhs) {
             (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a / b),
             (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a / b),
+            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a / b),
             _ => panic!("Registers cannot differ in size")
         }
     }
@@ -151,6 +173,7 @@ impl core::ops::BitAnd for IntegerRegister {
         match (self, rhs) {
             (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a & b),
             (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a & b),
+            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a & b),
             _ => panic!("Registers cannot differ in size")
         }
     }
@@ -163,6 +186,7 @@ impl core::ops::BitOr for IntegerRegister {
         match (self, rhs) {
             (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a | b),
             (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a | b),
+            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a | b),
             _ => panic!("Registers cannot differ in size")
         }
     }
@@ -175,6 +199,7 @@ impl core::ops::BitXor for IntegerRegister {
         match (self, rhs) {
             (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a ^ b),
             (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a ^ b),
+            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a ^ b),
             _ => panic!("Registers cannot differ in size")
         }
     }
@@ -204,7 +229,8 @@ impl core::ops::Not for IntegerRegister {
     fn not(self) -> Self::Output {
         match self {
             IntegerRegister::Word(a) => IntegerRegister::Word(!a),
-            IntegerRegister::DWord(a) => IntegerRegister::DWord(!a)
+            IntegerRegister::DWord(a) => IntegerRegister::DWord(!a),
+            IntegerRegister::QWord(a) => IntegerRegister::QWord(!a)
         }
     }
 }
@@ -216,6 +242,7 @@ impl core::ops::Shl for IntegerRegister {
         match (self, rhs) {
             (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a << b),
             (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a << b),
+            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a << b),
             _ => panic!("Registers cannot differ in size")
         }
     }
@@ -228,6 +255,7 @@ impl core::ops::Shr for IntegerRegister {
         match (self, rhs) {
             (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a >> b),
             (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a >> b),
+            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a >> b),
             _ => panic!("Registers cannot differ in size")
         }
     }
@@ -250,6 +278,7 @@ impl PartialEq for IntegerRegister {
         match (self, other) {
             (IntegerRegister::Word(a), IntegerRegister::Word(b)) => a == b,
             (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => a == b,
+            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => a == b,
             _ => false
         }
     }
