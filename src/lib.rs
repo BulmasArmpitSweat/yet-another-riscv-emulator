@@ -5,6 +5,8 @@
 
 use alloc::vec::Vec;
 
+use crate::config::IntegerRegisterFile;
+
 extern crate alloc;
 
 pub mod config;
@@ -30,7 +32,7 @@ pub enum CpuHarts {
 }
 
 pub struct CpuHart {
-    pub integer_registers: [registers::IntegerRegister; 32],
+    pub integer_registers: config::IntegerRegisterFile,
     pub float_registers: [registers::FloatRegister; 32],
     pub vector_registers: [registers::VectorRegister; 32],
     pub pc: registers::IntegerRegister,
@@ -72,7 +74,7 @@ impl FromConfig for CpuHart {
     fn from_config(config: &config::Config) -> Self {
         use core::mem::MaybeUninit;
 
-        let integer_registers = [registers::IntegerRegister::from_config(config); 32];
+        let integer_registers = IntegerRegisterFile::from_config(config);
         let float_registers = [registers::FloatRegister::from_config(config); 32];
         let mut vector_registers: [MaybeUninit<registers::VectorRegister>; 32] =
             [const { MaybeUninit::uninit() }; 32];

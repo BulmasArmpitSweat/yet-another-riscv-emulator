@@ -23,6 +23,24 @@ pub enum VectorRegister {
     HeapBased(Vec<u8>)
 }
 
+impl Default for IntegerRegister {
+    fn default() -> Self {
+        IntegerRegister::Word(0)
+    }
+}
+
+impl Default for FloatRegister {
+    fn default() -> Self {
+        FloatRegister::SinglePrec(0.)
+    }
+}
+
+impl Default for VectorRegister {
+    fn default() -> Self {
+        VectorRegister::StackBased(arrayvec::ArrayVec::new_const())
+    }
+}
+
 impl IntegerRegister {
     pub fn set_u128(&mut self, val: u128) {
         match self {
