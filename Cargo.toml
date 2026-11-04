@@ -11,3 +11,14 @@ license = "GPL-3.0-only"
 [dependencies]
 arrayvec = { version = "0.7.8", default-features = false }
 enable_elements = { path = "enable_elements" }
+
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+# Disallow unwrap and expect calls
+unwrap_used = "deny"
+expect_used = "deny"
+# disallow code that unconditionally panics (execpt for panic itself)
+unreachable = "deny"
+unimplemented = "deny"
+todo = "deny"
