@@ -24,8 +24,8 @@ pub fn enable_element(input: TokenStream) -> TokenStream {
 
     let idents = fields
         .iter()
-        .filter(|m| m.ident.is_some())
-        .map(|m| m.ident.as_ref().unwrap())
+        .map(|m| m.ident.as_ref())
+        .flatten()
         .collect::<Vec<_>>();
 
     let mut running_string = String::new();
