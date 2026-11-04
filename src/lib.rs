@@ -1,6 +1,7 @@
 #![no_std]
+
 // This is a library
-#![allow(dead_code)]
+#![allow(unused)]
 #![feature(const_trait_impl, maybe_uninit_array_assume_init, f128)]
 
 use alloc::vec::Vec;
@@ -13,7 +14,7 @@ pub mod config;
 pub mod registers;
 
 pub const MAX_HEAP_BASED_HART_LENGTH: usize = 128;
-pub const CSR_LEN: usize = 4096;
+pub const CSR_BITWIDTH: u32 = 12;
 
 pub(crate) const trait FromConfig {
     fn from_config(config: &config::Config) -> Self;
@@ -23,7 +24,7 @@ pub struct CpuBase {
     pub config: config::Config,
     pub harts: CpuHarts,
     pub memory: Memory,
-    pub csr: [u8; CSR_LEN]
+    pub csr: [u8; 2usize.pow(CSR_BITWIDTH)]
 }
 
 pub enum CpuHarts {
@@ -49,7 +50,7 @@ impl FromConfig for CpuBase {
         let harts = CpuHarts::from_config(config);
         let memory = Memory::from_config(config);
 
-        CpuBase { config: *config, harts, memory, csr: [0u8; CSR_LEN] }
+        CpuBase { config: *config, harts, memory, csr: [0u8; 2usize.pow(CSR_BITWIDTH)] }
     }
 }
 
