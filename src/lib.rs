@@ -12,6 +12,7 @@ extern crate alloc;
 
 pub mod config;
 pub mod registers;
+pub mod instruction;
 
 pub const MAX_HEAP_BASED_HART_LENGTH: usize = 128;
 pub const CSR_BITWIDTH: u32 = 12;
@@ -39,10 +40,11 @@ pub struct CpuHart {
     pub pc: registers::IntegerRegister,
 }
 
+// NOTE: Making these values public risks the user fucking with it.
 pub struct Memory {
-    pub base_ptr: *mut u8,
-    pub len: usize,
-    pub backing_buf: Vec<u8>
+    base_ptr: *mut u8,
+    len: usize,
+    backing_buf: Vec<u8>
 }
 
 impl FromConfig for CpuBase {
@@ -103,6 +105,24 @@ impl FromConfig for Memory {
         let len = backing_buf.len();
 
         Memory { base_ptr, len, backing_buf }
+    }
+}
+
+impl core::ops::Index<usize> for Memory {
+    type Output = u8;
+
+    fn index(&self, mut index: usize) -> &Self::Output {
+        while index > self.len {
+            index -= self.len; // Simulate memory wrapping
+        }
+
+        unsafe { (self.base_ptr.add(index)).as_ref_unchecked() }
+    }
+}
+
+impl CpuBase {
+    fn new_from_config(config: &config::Config) -> CpuBase {
+        CpuBase::from_config(config)
     }
 }
 
