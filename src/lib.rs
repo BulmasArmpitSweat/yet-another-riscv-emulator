@@ -4,13 +4,13 @@
 #![allow(unused)]
 #![feature(const_trait_impl, maybe_uninit_array_assume_init, f128)]
 
-use alloc::vec::Vec;
-
 use crate::config::IntegerRegisterFile;
 
 extern crate alloc;
+pub(crate) use alloc::vec::Vec;
 
 pub mod config;
+pub mod memory;
 pub mod registers;
 pub mod instruction;
 
@@ -24,7 +24,7 @@ pub(crate) const trait FromConfig {
 pub struct CpuBase {
     pub config: config::Config,
     pub harts: CpuHarts,
-    pub memory: Memory,
+    pub memory: memory::Memory,
     pub csr: [u8; 2usize.pow(CSR_BITWIDTH)]
 }
 
@@ -40,17 +40,10 @@ pub struct CpuHart {
     pub pc: registers::IntegerRegister,
 }
 
-// NOTE: Making these values public risks the user fucking with it.
-pub struct Memory {
-    base_ptr: *mut u8,
-    len: usize,
-    backing_buf: Vec<u8>
-}
-
 impl FromConfig for CpuBase {
     fn from_config(config: &config::Config) -> Self {
         let harts = CpuHarts::from_config(config);
-        let memory = Memory::from_config(config);
+        let memory = memory::Memory::from_config(config);
 
         CpuBase { config: *config, harts, memory, csr: [0u8; 2usize.pow(CSR_BITWIDTH)] }
     }
@@ -95,28 +88,6 @@ impl FromConfig for CpuHart {
             vector_registers: unsafe { MaybeUninit::array_assume_init(vector_registers) },
             pc,
         }
-    }
-}
-
-impl FromConfig for Memory {
-    fn from_config(config: &config::Config) -> Self {
-        let mut backing_buf = Vec::with_capacity(config.memory_len as usize);
-        let base_ptr = backing_buf.as_mut_ptr();
-        let len = backing_buf.len();
-
-        Memory { base_ptr, len, backing_buf }
-    }
-}
-
-impl core::ops::Index<usize> for Memory {
-    type Output = u8;
-
-    fn index(&self, mut index: usize) -> &Self::Output {
-        while index > self.len {
-            index -= self.len; // Simulate memory wrapping
-        }
-
-        unsafe { (self.base_ptr.add(index)).as_ref_unchecked() }
     }
 }
 
