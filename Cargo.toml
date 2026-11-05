@@ -12,6 +12,7 @@ license = "GPL-3.0-only"
 arrayvec = { version = "0.7.8", default-features = false }
 bitfields = "3.2.1"
 enable_elements = { path = "enable_elements" }
+thiserror = { version = "2.0.21", default-features = false }
 
 [lints.clippy]
 pedantic = { level = "deny", priority = -1 }
