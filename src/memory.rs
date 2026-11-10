@@ -1,7 +1,9 @@
 use crate::FromConfig;
 
-use crate::Vec;
+use crate::utils::Sizeof;
+use crate::registers::IntoIntegerRegister;
 
+use crate::Vec;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -39,6 +41,20 @@ impl core::ops::Index<usize> for Memory {
         }
 
         unsafe { (self.base_ptr.add(index)).as_ref_unchecked() }
+    }
+}
+
+impl core::ops::Index<crate::registers::IntegerRegister> for Memory {
+    type Output = u8;
+
+    fn index(&self, mut index: crate::registers::IntegerRegister) -> &Self::Output {
+        if index.larger_than_usize() {
+            while index > usize::MAX.into_integer_register() {
+                index -= usize::MAX.into_integer_register()
+            }
+        }
+
+        unsafe { (self.base_ptr.add(index.to_usize())).as_ref_unchecked() }
     }
 }
 
