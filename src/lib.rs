@@ -10,9 +10,12 @@ extern crate alloc;
 pub(crate) use alloc::vec::Vec;
 
 pub mod config;
+pub mod exception;
+pub mod instruction;
+pub mod instruction_impl;
 pub mod memory;
 pub mod registers;
-pub mod instruction;
+pub mod utils;
 
 pub const MAX_HEAP_BASED_HART_LENGTH: usize = 128;
 pub const CSR_BITWIDTH: u32 = 12;
