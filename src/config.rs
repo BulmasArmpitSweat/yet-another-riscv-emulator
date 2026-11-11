@@ -2,9 +2,6 @@ use enable_elements::EnableElement;
 
 use crate::{FromConfig, registers::{IntegerRegister}};
 
-pub const XLEN_DEFAULT: u8 = 32;
-pub const FLEN_DEFAULT: u8 = 0; // Old value: 32
-pub const VLEN_DEFAULT: usize = 0; // Old value: 128
 pub const NUM_HARTS_DEFAULT: usize = 1;
 pub const STARTING_PC_DEFAULT: u64 = 0x80000000;
 pub const MEMORY_LENGTH_DEFAULT: u64 = STARTING_PC_DEFAULT;
@@ -275,9 +272,6 @@ pub struct EnabledExtensions {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Config {
-    pub xlen: u8,
-    pub flen: u8,
-    pub vlen: usize, // vlen can be an arbitrary size, much larger than xlen or flen
     pub num_harts: usize,
     pub starting_pc: u64,
     pub memory_len: u64,
@@ -287,9 +281,6 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            xlen: XLEN_DEFAULT,
-            flen: FLEN_DEFAULT,
-            vlen: VLEN_DEFAULT,
             num_harts: NUM_HARTS_DEFAULT,
             starting_pc: STARTING_PC_DEFAULT,
             memory_len: MEMORY_LENGTH_DEFAULT,
@@ -301,11 +292,9 @@ impl Default for Config {
 impl BaseExtension {
     fn integer_register_file_reduced(&self) -> bool {
         match self {
-            BaseExtension::Rv32i => false,
-            BaseExtension::Rv64i => false,
             BaseExtension::Rv32e => true,
             BaseExtension::Rv64e => true,
-            BaseExtension::Rv128i => false,
+            _ => false
         }
     }
 }
@@ -313,21 +302,6 @@ impl BaseExtension {
 impl Config {
     pub fn new() -> Self {
         Config::default()
-    }
-
-    pub fn with_xlen(mut self, xlen: u8) -> Self {
-        self.xlen = xlen;
-        self
-    }
-
-    pub fn with_flen(mut self, flen: u8) -> Self {
-        self.flen = flen;
-        self
-    }
-
-    pub fn with_vlen(mut self, vlen: usize) -> Self {
-        self.vlen = vlen;
-        self
     }
 
     pub fn with_num_harts(mut self, num_harts: usize) -> Self {
