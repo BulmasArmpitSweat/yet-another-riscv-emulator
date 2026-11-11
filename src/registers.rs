@@ -1,5 +1,6 @@
 use crate::alloc::vec::Vec;
 use crate::FromConfig;
+use crate::utils::Sizeof;
 
 #[derive(Debug, Clone, Copy)]
 pub enum IntegerRegister {
@@ -42,6 +43,25 @@ impl Default for VectorRegister {
 }
 
 impl IntegerRegister {
+    pub const fn to_usize(self) -> usize {
+        match self {
+            IntegerRegister::Word(w) => w as usize,
+            IntegerRegister::DWord(d) => d as usize,
+            IntegerRegister::QWord(q) => q as usize,
+        }
+    }
+
+    pub const fn larger_than_usize(&self) -> bool {
+        self.byte_length() > core::mem::size_of::<usize>()
+    }
+    
+    pub const fn byte_length(&self) -> usize {
+        match self {
+            IntegerRegister::Word(_) => core::mem::size_of::<u32>(),
+            IntegerRegister::DWord(_) => core::mem::size_of::<u64>(),
+            IntegerRegister::QWord(_) => core::mem::size_of::<u128>()
+        }
+    }
     pub fn set_u128(&mut self, val: u128) {
         match self {
             IntegerRegister::Word(w) => {
@@ -108,188 +128,89 @@ impl FromConfig for VectorRegister {
     }
 }
 
-impl core::ops::Add for IntegerRegister {
-    type Output = Self;
+macro_rules! int_reg_arith_impl {
+    ($trait:path, $fnname:tt, $op:tt) => {
+        impl $trait for IntegerRegister {
+            type Output = Self;
 
-    fn add(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a + b),
-            (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a + b),
-            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a + b),
-            _ => panic!("Registers cannot differ in size")
+            fn $fnname(self, rhs: Self) -> Self::Output {
+                match (self, rhs) {
+                    (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a $op b),
+                    (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a $op b),
+                    (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a $op b),
+                    _ => panic!("Registers cannot differ in size")
+                }
+            }
         }
-    }
+    };
 }
 
-impl core::ops::Sub for IntegerRegister {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a - b),
-            (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a - b),
-            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a - b),
-            _ => panic!("Registers cannot differ in size")
+macro_rules! int_reg_arith_assign_impl {
+    ($trait:path, $fnname:tt, $op:tt) => {
+        impl $trait for IntegerRegister {
+            fn $fnname(&mut self, rhs: Self) {
+                *self = *self $op rhs;
+            }
         }
-    }
+    };
 }
 
-impl core::ops::Mul for IntegerRegister {
-    type Output = Self;
+macro_rules! float_reg_arith_impl {
+    ($trait:path, $fnname:tt, $op:tt) => {
+        impl $trait for FloatRegister {
+            type Output = Self;
 
-    fn mul(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a * b),
-            (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a * b),
-            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a * b),
-            _ => panic!("Registers cannot differ in size")
+            fn $fnname(self, rhs: Self) -> Self::Output {
+                match (self, rhs) {
+                    (FloatRegister::SinglePrec(a), FloatRegister::SinglePrec(b)) => FloatRegister::SinglePrec(a $op b),
+                    (FloatRegister::DoublePrec(a), FloatRegister::DoublePrec(b)) => FloatRegister::DoublePrec(a $op b),
+                    (FloatRegister::QuadPrec(a), FloatRegister::QuadPrec(b)) => FloatRegister::QuadPrec(a $op b),
+                    _ => panic!("Registers cannot differ in size")
+                }
+            }
         }
-    }
+    };
 }
 
-impl core::ops::Div for IntegerRegister {
-    type Output = Self;
-
-    fn div(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a / b),
-            (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a / b),
-            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a / b),
-            _ => panic!("Registers cannot differ in size")
+macro_rules! float_reg_arith_assign_impl {
+    ($trait:path, $fnname:tt, $op:tt) => {
+        impl $trait for FloatRegister {
+            fn $fnname(&mut self, rhs: Self) {
+                *self = *self $op rhs;
+            }
         }
-    }
+    };
 }
 
-impl core::ops::AddAssign for IntegerRegister {
-    fn add_assign(&mut self, rhs: Self) {
-        *self = *self + rhs;
-    }
-}
+int_reg_arith_impl!(core::ops::Add, add, +);
+int_reg_arith_impl!(core::ops::Sub, sub, -);
+int_reg_arith_impl!(core::ops::Mul, mul, *);
+int_reg_arith_impl!(core::ops::Div, div, /);
+int_reg_arith_impl!(core::ops::BitAnd, bitand, &);
+int_reg_arith_impl!(core::ops::BitOr, bitor, |);
+int_reg_arith_impl!(core::ops::BitXor, bitxor, ^);
+int_reg_arith_impl!(core::ops::Shl, shl, <<);
+int_reg_arith_impl!(core::ops::Shr, shr, >>);
 
-impl core::ops::SubAssign for IntegerRegister {
-    fn sub_assign(&mut self, rhs: Self) {
-        *self = *self - rhs;
-    }
-}
+int_reg_arith_assign_impl!(core::ops::AddAssign, add_assign, +);
+int_reg_arith_assign_impl!(core::ops::SubAssign, sub_assign, -);
+int_reg_arith_assign_impl!(core::ops::MulAssign, mul_assign, *);
+int_reg_arith_assign_impl!(core::ops::DivAssign, div_assign, /);
+int_reg_arith_assign_impl!(core::ops::BitAndAssign, bitand_assign, &);
+int_reg_arith_assign_impl!(core::ops::BitOrAssign, bitor_assign, |);
+int_reg_arith_assign_impl!(core::ops::BitXorAssign, bitxor_assign, ^);
+int_reg_arith_assign_impl!(core::ops::ShlAssign, shl_assign, <<);
+int_reg_arith_assign_impl!(core::ops::ShrAssign, shr_assign, >>);
 
-impl core::ops::MulAssign for IntegerRegister {
-    fn mul_assign(&mut self, rhs: Self) {
-        *self = *self * rhs;
-    }
-}
+float_reg_arith_impl!(core::ops::Add, add, +);
+float_reg_arith_impl!(core::ops::Sub, sub, -);
+float_reg_arith_impl!(core::ops::Mul, mul, *);
+float_reg_arith_impl!(core::ops::Div, div, /);
 
-impl core::ops::DivAssign for IntegerRegister {
-    fn div_assign(&mut self, rhs: Self) {
-        *self = *self / rhs;
-    }
-}
-
-impl core::ops::BitAnd for IntegerRegister {
-    type Output = Self;
-
-    fn bitand(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a & b),
-            (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a & b),
-            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a & b),
-            _ => panic!("Registers cannot differ in size")
-        }
-    }
-}
-
-impl core::ops::BitOr for IntegerRegister {
-    type Output = Self;
-
-    fn bitor(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a | b),
-            (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a | b),
-            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a | b),
-            _ => panic!("Registers cannot differ in size")
-        }
-    }
-}
-
-impl core::ops::BitXor for IntegerRegister {
-    type Output = Self;
-
-    fn bitxor(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a ^ b),
-            (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a ^ b),
-            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a ^ b),
-            _ => panic!("Registers cannot differ in size")
-        }
-    }
-}
-
-impl core::ops::BitAndAssign for IntegerRegister {
-    fn bitand_assign(&mut self, rhs: Self) {
-        *self = *self & rhs;
-    }
-}
-
-impl core::ops::BitOrAssign for IntegerRegister {
-    fn bitor_assign(&mut self, rhs: Self) {
-        *self = *self | rhs;
-    }
-}
-
-impl core::ops::BitXorAssign for IntegerRegister {
-    fn bitxor_assign(&mut self, rhs: Self) {
-        *self = *self ^ rhs;
-    }
-}
-
-impl core::ops::Not for IntegerRegister {
-    type Output = Self;
-
-    fn not(self) -> Self::Output {
-        match self {
-            IntegerRegister::Word(a) => IntegerRegister::Word(!a),
-            IntegerRegister::DWord(a) => IntegerRegister::DWord(!a),
-            IntegerRegister::QWord(a) => IntegerRegister::QWord(!a)
-        }
-    }
-}
-
-impl core::ops::Shl for IntegerRegister {
-    type Output = Self;
-
-    fn shl(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a << b),
-            (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a << b),
-            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a << b),
-            _ => panic!("Registers cannot differ in size")
-        }
-    }
-}
-
-impl core::ops::Shr for IntegerRegister {
-    type Output = Self;
-
-    fn shr(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (IntegerRegister::Word(a), IntegerRegister::Word(b)) => IntegerRegister::Word(a >> b),
-            (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => IntegerRegister::DWord(a >> b),
-            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => IntegerRegister::QWord(a >> b),
-            _ => panic!("Registers cannot differ in size")
-        }
-    }
-}
-
-impl core::ops::ShlAssign for IntegerRegister {
-    fn shl_assign(&mut self, rhs: Self) {
-        *self = *self << rhs;
-    }
-}
-
-impl core::ops::ShrAssign for IntegerRegister {
-    fn shr_assign(&mut self, rhs: Self) {
-        *self = *self >> rhs;
-    }
-}
+float_reg_arith_assign_impl!(core::ops::AddAssign, add_assign, +);
+float_reg_arith_assign_impl!(core::ops::SubAssign, sub_assign, -);
+float_reg_arith_assign_impl!(core::ops::MulAssign, mul_assign, *);
+float_reg_arith_assign_impl!(core::ops::DivAssign, div_assign, /);
 
 impl PartialEq for IntegerRegister {
     fn eq(&self, other: &Self) -> bool {
@@ -300,81 +221,9 @@ impl PartialEq for IntegerRegister {
             _ => false
         }
     }
-}
 
-impl core::ops::Add for FloatRegister {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (FloatRegister::SinglePrec(a), FloatRegister::SinglePrec(b)) => FloatRegister::SinglePrec(a + b),
-            (FloatRegister::DoublePrec(a), FloatRegister::DoublePrec(b)) => FloatRegister::DoublePrec(a + b),
-            (FloatRegister::QuadPrec(a), FloatRegister::QuadPrec(b)) => FloatRegister::QuadPrec(a + b),
-            _ => panic!("Registers cannot differ in size")
-        }
-    }
-}
-
-impl core::ops::Sub for FloatRegister {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (FloatRegister::SinglePrec(a), FloatRegister::SinglePrec(b)) => FloatRegister::SinglePrec(a - b),
-            (FloatRegister::DoublePrec(a), FloatRegister::DoublePrec(b)) => FloatRegister::DoublePrec(a - b),
-            (FloatRegister::QuadPrec(a), FloatRegister::QuadPrec(b)) => FloatRegister::QuadPrec(a - b),
-            _ => panic!("Registers cannot differ in size")
-        }
-    }
-}
-
-impl core::ops::Mul for FloatRegister {
-    type Output = Self;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (FloatRegister::SinglePrec(a), FloatRegister::SinglePrec(b)) => FloatRegister::SinglePrec(a * b),
-            (FloatRegister::DoublePrec(a), FloatRegister::DoublePrec(b)) => FloatRegister::DoublePrec(a * b),
-            (FloatRegister::QuadPrec(a), FloatRegister::QuadPrec(b)) => FloatRegister::QuadPrec(a * b),
-            _ => panic!("Registers cannot differ in size")
-        }
-    }
-}
-
-impl core::ops::Div for FloatRegister {
-    type Output = Self;
-
-    fn div(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (FloatRegister::SinglePrec(a), FloatRegister::SinglePrec(b)) => FloatRegister::SinglePrec(a / b),
-            (FloatRegister::DoublePrec(a), FloatRegister::DoublePrec(b)) => FloatRegister::DoublePrec(a / b),
-            (FloatRegister::QuadPrec(a), FloatRegister::QuadPrec(b)) => FloatRegister::QuadPrec(a / b),
-            _ => panic!("Registers cannot differ in size")
-        }
-    }
-}
-
-impl core::ops::AddAssign for FloatRegister {
-    fn add_assign(&mut self, rhs: Self) {
-        *self = *self + rhs;
-    }
-}
-
-impl core::ops::SubAssign for FloatRegister {
-    fn sub_assign(&mut self, rhs: Self) {
-        *self = *self - rhs;
-    }
-}
-
-impl core::ops::MulAssign for FloatRegister {
-    fn mul_assign(&mut self, rhs: Self) {
-        *self = *self * rhs;
-    }
-}
-
-impl core::ops::DivAssign for FloatRegister {
-    fn div_assign(&mut self, rhs: Self) {
-        *self = *self / rhs;
+    fn ne(&self, other: &Self) -> bool {
+        !Self::eq(&self, other)
     }
 }
 
@@ -385,6 +234,96 @@ impl PartialEq for FloatRegister {
             (FloatRegister::DoublePrec(a), FloatRegister::DoublePrec(b)) => a == b,
             (FloatRegister::QuadPrec(a), FloatRegister::QuadPrec(b)) => a == b,
             _ => false
+        }
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        !Self::eq(&self, other)
+    }
+}
+
+impl PartialOrd for IntegerRegister {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        match (self, other) {
+            (IntegerRegister::Word(a), IntegerRegister::Word(b)) => Some(a.cmp(b)),
+            (IntegerRegister::DWord(a), IntegerRegister::DWord(b)) => Some(a.cmp(b)),
+            (IntegerRegister::QWord(a), IntegerRegister::QWord(b)) => Some(a.cmp(b)),
+            _ => None
+        }
+    }
+}
+
+impl PartialOrd for FloatRegister {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        macro_rules! equality_because_im_lazy {
+            ($a:expr, $b:expr) => {
+                if $a < $b {
+                    Some(core::cmp::Ordering::Less)
+                } else if $a > $b {
+                    Some(core::cmp::Ordering::Greater)
+                } else {
+                    Some(core::cmp::Ordering::Equal)
+                }
+            };
+        }
+
+        match (self, other) {
+            (FloatRegister::SinglePrec(a), FloatRegister::SinglePrec(b)) => {
+                equality_because_im_lazy!(a, b)
+            },
+            (FloatRegister::DoublePrec(a), FloatRegister::DoublePrec(b)) => {
+                equality_because_im_lazy!(a, b)
+            },
+            (FloatRegister::QuadPrec(a), FloatRegister::QuadPrec(b)) => {
+                equality_because_im_lazy!(a, b)
+            },
+            _ => None
+        }
+    }
+}
+
+pub(crate) trait IntoIntegerRegister {
+    fn into_integer_register(self) -> IntegerRegister;
+}
+
+impl IntoIntegerRegister for u8 {
+    fn into_integer_register(self) -> IntegerRegister {
+        IntegerRegister::Word(self as u32)
+    }
+}
+
+impl IntoIntegerRegister for u16 {
+    fn into_integer_register(self) -> IntegerRegister {
+        IntegerRegister::Word(self as u32)
+    }
+}
+
+impl IntoIntegerRegister for u32 {
+    fn into_integer_register(self) -> IntegerRegister {
+        IntegerRegister::Word(self)
+    }
+}
+
+impl IntoIntegerRegister for u64 {
+    fn into_integer_register(self) -> IntegerRegister {
+        IntegerRegister::DWord(self)
+    }
+}
+
+impl IntoIntegerRegister for u128 {
+    fn into_integer_register(self) -> IntegerRegister {
+        IntegerRegister::QWord(self)
+    }
+}
+
+impl IntoIntegerRegister for usize {
+    fn into_integer_register(self) -> IntegerRegister {
+        if usize::sizeof() <= IntegerRegister::DWord(0).sizeof_self() {
+            IntegerRegister::Word(self as u32)
+        } else if usize::sizeof() <= IntegerRegister::QWord(0).sizeof_self() {
+            IntegerRegister::DWord(self as u64)
+        } else {
+            IntegerRegister::QWord(self as u128)
         }
     }
 }
