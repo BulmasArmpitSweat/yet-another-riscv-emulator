@@ -1,3 +1,5 @@
+use crate::{CpuHart, instruction_impl::*};
+
 use bitfields::bitfield;
 
 // They should make this into a game
